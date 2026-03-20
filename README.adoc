@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Ephapaxiser
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:toc: left
+:icons: font
+
+== What Is This?
+
+Ephapaxiser enforces **linear type semantics** on resources in existing code —
+file handles, network connections, crypto keys, database transactions — ensuring
+each is used **exactly once** and properly consumed.
+
+Ephapax (_ἐφάπαξ — once for all_) is a linear type system targeting WASM.
+Ephapaxiser brings its guarantees to existing Rust, C, and Zig codebases.
+
+== How It Works
+
+Annotate resources in `ephapaxiser.toml`. Ephapaxiser:
+
+1. Identifies resource acquisition and release patterns in your code
+2. Generates Ephapax linear type wrappers that enforce single-use semantics
+3. **Compile-time errors** if a resource is used after consumption, leaked, or double-freed
+4. Zero runtime overhead — proofs erased at compile time, targets WASM
+
+== Key Value
+
+* **Resource leaks become compile errors** — files always closed, keys always zeroised
+* **Use-after-free impossible** — linear types structurally prevent it
+* **Crypto key safety** — keys used exactly once then destroyed (perfect forward secrecy)
+* **Existing code wraps safely** — gradual adoption, one resource type at a time
+
+== Architecture
+
+Follows the hyperpolymath -iser pattern:
+manifest -> Idris2 ABI proof -> Zig FFI bridge -> target language codegen.
+Part of the https://github.com/hyperpolymath/iseriser[-iser family].
+
+== Status
+
+**Pre-alpha.** Architecture defined, scaffolding in place, codegen pending.
+
+== License
+
+SPDX-License-Identifier: PMPL-1.0-or-later
