@@ -10,31 +10,32 @@
 
   (project-context
     (name "ephapaxiser")
-    (description "Enforce single-use linear type semantics on resources via Ephapax.
-      Analyses code for resource handles, inserts Ephapax linear type wrappers,
-      enforces exactly-once usage, prevents leaks/double-free/use-after-free.")
-    (status "scaffold-documented")
-    (priority "—")
+    (description "Enforce single-use linear type semantics on resources via Ephapax")
+    (status "alpha")
+    (priority "medium")
     (ecosystem "-iser family (https://github.com/hyperpolymath/iseriser)"))
 
   (current-position
-    (phase "scaffold-documented")
-    (completion-percentage 10)
-    (milestone "Architecture defined, CLI scaffolded, Idris2 ABI types bespoke,
-      Zig FFI with linearity tracking, documentation complete"))
+    (phase "phase-1-complete")
+    (completion-percentage 45)
+    (milestone "Phase 1 complete — resource detection, wrapper generation, linearity analysis")
+    (what-changed
+      "2026-03-21: Phase 1 complete. Resource detection, Ephapax wrapper generation, linearity analysis, multi-language codegen stubs, bespoke manifest parsing. Integration tests passing."))
 
   (route-to-mvp
-    (step 1 "Implement resource detection: parse source files for acquire/release patterns")
-    (step 2 "Generate Ephapax wrappers for detected resource classes")
-    (step 3 "Linearity enforcement: compile-time errors for leak/double-free/use-after-free")
-    (step 4 "Idris2 proofs: LinearResource, UsageCount, ConsumeProof (Idris2 wins rule)")
-    (step 5 "Multi-language codegen: Rust Drop wrappers, C cleanup attrs, Zig defer")
-    (step 6 "Integration tests with real-world codebases"))
+    (step 1 "DONE — Resource handle detection in source files")
+    (step 2 "DONE — Ephapax wrapper generation with linear enforcement")
+    (step 3 "DONE — Linearity analysis (leak/double-free/use-after-free)")
+    (step 4 "DONE — Multi-language codegen stubs (Rust Drop/C cleanup/Zig defer)")
+    (step 5 "DONE — Bespoke manifest parsing and CLI")
+    (step 6 "TODO — End-to-end linearity enforcement on real codebase")
+    (step 7 "TODO — Idris2 proofs (LinearResource, UsageCount, ConsumeProof)")
+    (step 8 "TODO — PanLL panel and BoJ cartridge integration"))
 
   (blockers-and-issues
-    (none "Project is in scaffold phase — no blockers yet"))
+    (note "Idris2 proofs for linearity must follow Idris2-wins-over-Ephapax rule"))
 
   (critical-next-actions
-    (action "Implement resource handle detection in Rust source files")
-    (action "Generate first Ephapax wrapper for file handle use case")
-    (action "Write end-to-end test: wrap file handle, enforce close-once")))
+    (action "End-to-end test: wrap file handle, enforce close-once")
+    (action "Write Idris2 proofs for LinearResource and ConsumeProof")
+    (action "Test with real Rust codebase resource detection")))

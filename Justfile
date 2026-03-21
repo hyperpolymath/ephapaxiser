@@ -32,6 +32,10 @@ doc:
 clean:
     cargo clean
 
+# Generate from example manifest
+generate:
+    cargo run -- generate examples/safe-files/ephapaxiser.toml
+
 # Run the CLI
 run *ARGS:
     cargo run -- {{ARGS}}
