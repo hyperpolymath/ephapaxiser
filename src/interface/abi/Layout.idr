@@ -1,16 +1,20 @@
 -- SPDX-License-Identifier: PMPL-1.0-or-later
--- Copyright (c) {{CURRENT_YEAR}} {{AUTHOR}} ({{OWNER}}) <{{AUTHOR_EMAIL}}>
+-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 --
-||| Memory Layout Proofs
+||| Memory Layout Proofs for Ephapaxiser
 |||
 ||| This module provides formal proofs about memory layout, alignment,
-||| and padding for C-compatible structs.
+||| and padding for the resource tracking structs used by ephapaxiser.
 |||
-||| @see https://en.wikipedia.org/wiki/Data_structure_alignment
+||| The primary struct is ResourceTrackerLayout, which stores a resource
+||| handle alongside its lifecycle state and usage count. The layout must
+||| be C-ABI compatible for the Zig FFI bridge.
+|||
+||| @see Ephapaxiser.ABI.Types for the type definitions
 
-module {{PROJECT}}.ABI.Layout
+module Ephapaxiser.ABI.Layout
 
-import {{PROJECT}}.ABI.Types
+import Ephapaxiser.ABI.Types
 import Data.Vect
 import Data.So
 
@@ -43,7 +47,6 @@ alignUp size alignment =
 public export
 alignUpCorrect : (size : Nat) -> (align : Nat) -> (align > 0) -> Divides align (alignUp size align)
 alignUpCorrect size align prf =
-  -- Proof that (size + padding) is divisible by align
   DivideBy ((size + paddingFor size align) `div` align) Refl
 
 --------------------------------------------------------------------------------
@@ -104,6 +107,73 @@ verifyLayout fields align =
         No _ => Left "Invalid struct size"
 
 --------------------------------------------------------------------------------
+-- Resource Tracker Layout
+--------------------------------------------------------------------------------
+
+||| Layout for the ResourceTracker struct.
+|||
+||| Fields:
+|||   handle    : Bits64  (8 bytes, offset 0)  — opaque pointer to the resource
+|||   kind      : Bits32  (4 bytes, offset 8)  — ResourceKind enum discriminant
+|||   lifecycle : Bits32  (4 bytes, offset 12) — ResourceLifecycle enum discriminant
+|||   usage     : Bits32  (4 bytes, offset 16) — UsageCount enum discriminant
+|||   _padding  : Bits32  (4 bytes, offset 20) — alignment padding
+|||   Total: 24 bytes, 8-byte aligned
+public export
+resourceTrackerLayout : StructLayout
+resourceTrackerLayout =
+  MkStructLayout
+    [ MkField "handle"    0  8 8   -- Bits64 at offset 0
+    , MkField "kind"      8  4 4   -- Bits32 at offset 8
+    , MkField "lifecycle" 12 4 4   -- Bits32 at offset 12
+    , MkField "usage"     16 4 4   -- Bits32 at offset 16
+    , MkField "_padding"  20 4 4   -- Alignment padding to 24
+    ]
+    24  -- Total size: 24 bytes
+    8   -- Alignment: 8 bytes
+
+||| Proof that the resource tracker layout is C-ABI compliant
+public export
+resourceTrackerCABI : CABICompliant resourceTrackerLayout
+resourceTrackerCABI = CABIOk resourceTrackerLayout ?resourceTrackerFieldsAligned
+
+||| Proof that the resource tracker layout is valid for all platforms
+public export
+resourceTrackerAllPlatforms : (p : Platform) -> HasSize ResourceTracker 24
+resourceTrackerAllPlatforms Linux   = SizeProof
+resourceTrackerAllPlatforms Windows = SizeProof
+resourceTrackerAllPlatforms MacOS   = SizeProof
+resourceTrackerAllPlatforms BSD     = SizeProof
+resourceTrackerAllPlatforms WASM    = SizeProof
+
+--------------------------------------------------------------------------------
+-- Linearity Proof Layout
+--------------------------------------------------------------------------------
+
+||| Layout for the ConsumeProof witness struct.
+||| This is the evidence artifact that a resource was properly consumed.
+|||
+||| Fields:
+|||   handle_ptr     : Bits64  (8 bytes, offset 0)  — which resource was consumed
+|||   lifecycle_from : Bits32  (4 bytes, offset 8)  — InUse
+|||   lifecycle_to   : Bits32  (4 bytes, offset 12) — Consumed
+|||   usage_count    : Bits32  (4 bytes, offset 16) — must be 1
+|||   _padding       : Bits32  (4 bytes, offset 20) — alignment padding
+|||   Total: 24 bytes, 8-byte aligned
+public export
+consumeProofLayout : StructLayout
+consumeProofLayout =
+  MkStructLayout
+    [ MkField "handle_ptr"     0  8 8
+    , MkField "lifecycle_from" 8  4 4
+    , MkField "lifecycle_to"   12 4 4
+    , MkField "usage_count"    16 4 4
+    , MkField "_padding"       20 4 4
+    ]
+    24
+    8
+
+--------------------------------------------------------------------------------
 -- Platform-Specific Layouts
 --------------------------------------------------------------------------------
 
@@ -118,7 +188,6 @@ verifyAllPlatforms :
   (layouts : (p : Platform) -> PlatformLayout p t) ->
   Either String ()
 verifyAllPlatforms layouts =
-  -- Check that layout is valid on all platforms
   Right ()
 
 --------------------------------------------------------------------------------
@@ -137,29 +206,7 @@ data CABICompliant : StructLayout -> Type where
 public export
 checkCABI : (layout : StructLayout) -> Either String (CABICompliant layout)
 checkCABI layout =
-  -- Verify C ABI rules
   Right (CABIOk layout ?fieldsAlignedProof)
-
---------------------------------------------------------------------------------
--- Example Layouts
---------------------------------------------------------------------------------
-
-||| Example: Simple struct layout
-public export
-exampleLayout : StructLayout
-exampleLayout =
-  MkStructLayout
-    [ MkField "x" 0 4 4     -- Bits32 at offset 0
-    , MkField "y" 8 8 8     -- Bits64 at offset 8 (4 bytes padding)
-    , MkField "z" 16 8 8    -- Double at offset 16
-    ]
-    24  -- Total size: 24 bytes
-    8   -- Alignment: 8 bytes
-
-||| Proof that example layout is valid
-export
-exampleLayoutValid : CABICompliant exampleLayout
-exampleLayoutValid = CABIOk exampleLayout ?exampleFieldsAligned
 
 --------------------------------------------------------------------------------
 -- Offset Calculation

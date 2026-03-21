@@ -6,12 +6,16 @@
   (version "0.1.0")
   (name "ephapaxiser")
   (type "tool")
-  (purpose "Enforce single-use linear type semantics via Ephapax")
+  (purpose "Enforce single-use linear type semantics on resources via Ephapax.
+    Analyses code for resource handles (file descriptors, database connections,
+    GPU buffers, crypto keys, session tokens), inserts Ephapax linear type
+    wrappers, and enforces exactly-once usage at compile time.")
 
   (position-in-ecosystem
     (family "-iser acceleration frameworks")
     (meta-framework "iseriser")
     (relationship "sibling")
+    (speciality "Resource safety — linear types for existing code")
     (top-3 ("typedqliser" "chapeliser" "verisimiser")))
 
   (related-projects
@@ -32,7 +36,12 @@
       (description "Database recovery via constraint propagation"))
     (project "proven"
       (relationship "dependency")
-      (description "Shared Idris2 verified library"))
+      (description "Shared Idris2 verified library — provides base proofs"))
     (project "typell"
       (relationship "dependency")
-      (description "Type theory engine"))))
+      (description "Type theory engine"))
+    (project "ephapax"
+      (relationship "upstream-language")
+      (description "The linear type language that ephapaxiser wraps.
+        Ephapax (once for all) is hyperpolymath's linear type system
+        where every value must be used exactly once."))))

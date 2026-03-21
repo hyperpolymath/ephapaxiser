@@ -4,38 +4,58 @@
 
 (meta
   (version "0.1.0")
-  (last-updated "2026-03-20")
+  (last-updated "2026-03-21")
 
   (architecture-decisions
     (adr "001-iser-pattern"
       (status "accepted")
-      (context "Need to make powerful languages accessible without steep learning curves")
-      (decision "Use manifest-driven code generation: user describes WHAT, tool generates HOW")
-      (consequences "Users write zero target language code; all complexity in the -iser"))
+      (context "Need to enforce resource safety without requiring developers to learn Ephapax")
+      (decision "Use manifest-driven code generation: user describes resources in TOML,
+        ephapaxiser analyses code, generates Ephapax linear type wrappers automatically")
+      (consequences "Users write zero Ephapax code; all complexity in the -iser"))
 
     (adr "002-abi-ffi-standard"
       (status "accepted")
-      (context "Need verified interop between Rust CLI, target language, and user code")
-      (decision "Idris2 ABI for formal proofs, Zig FFI for C-ABI bridge")
+      (context "Need verified interop between Rust CLI, Ephapax type system, and user code")
+      (decision "Idris2 ABI for formal linearity proofs, Zig FFI for C-ABI bridge")
       (consequences "Compile-time correctness guarantees; zero runtime overhead from proofs"))
 
-    (adr "003-rsr-template"
+    (adr "003-idris2-wins"
+      (status "accepted")
+      (context "When Idris2 dependent type proofs conflict with Ephapax linear type wrappers,
+        which takes precedence?")
+      (decision "Idris2 always wins. The formally verified proofs are the source of truth.
+        Ephapax wrappers must be adjusted to conform to Idris2 proofs, never the reverse.")
+      (consequences "Dependability-first design; proofs are never weakened for convenience"))
+
+    (adr "004-resource-kind-taxonomy"
+      (status "accepted")
+      (context "Need to classify resources for type-appropriate wrapper generation")
+      (decision "Seven built-in resource kinds (FileHandle, Socket, DbConnection, GpuBuffer,
+        CryptoKey, SessionToken, HeapAlloc) plus Custom for user-defined resources")
+      (consequences "Covers most real-world resource types; extensible for edge cases"))
+
+    (adr "005-rsr-template"
       (status "accepted")
       (context "Need consistent project structure across 29+ -iser repos")
       (decision "All repos cloned from rsr-template-repo with full CI/CD and governance")
       (consequences "17 workflows, SECURITY.md, CONTRIBUTING, bot directives from day one")))
 
   (development-practices
-    (language "Rust" (purpose "CLI and orchestration"))
-    (language "Idris2" (purpose "ABI formal proofs"))
-    (language "Zig" (purpose "FFI C-ABI bridge"))
+    (language "Rust" (purpose "CLI, resource analysis, orchestration"))
+    (language "Idris2" (purpose "ABI formal proofs of linearity invariants"))
+    (language "Zig" (purpose "FFI C-ABI bridge with resource tracking"))
     (build-tool "cargo")
     (ci "GitHub Actions (17 workflows)"))
 
   (design-rationale
-    (principle "Manifest-driven"
-      (explanation "User intent captured in TOML; all generation is deterministic and reproducible"))
-    (principle "Formally verified bridges"
-      (explanation "Idris2 dependent types prove interface correctness at compile time"))
+    (principle "Exactly-once consumption"
+      (explanation "Every resource handle must be used exactly once and then consumed.
+        This is enforced by LinearResource type + ConsumeProof witness."))
+    (principle "Idris2 proofs are authoritative"
+      (explanation "When Idris2 proofs conflict with Ephapax wrappers, adjust the wrappers.
+        Proofs encode the ground truth about resource safety."))
     (principle "Zero target language exposure"
-      (explanation "Users never write Chapel/Julia/Futhark/etc. — the -iser handles everything"))))
+      (explanation "Users never write Ephapax — the -iser handles everything via manifest"))
+    (principle "Gradual adoption"
+      (explanation "Wrap one resource type at a time. No big-bang migration required."))))

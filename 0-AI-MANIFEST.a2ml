@@ -1,24 +1,33 @@
-# ⚠️ STOP - CRITICAL READING REQUIRED
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+# !! STOP - CRITICAL READING REQUIRED !!
 
 **THIS FILE MUST BE READ FIRST BY ALL AI AGENTS**
 
 ## WHAT IS THIS?
 
-This is the AI manifest for **[YOUR-REPO-NAME]**. It declares:
+This is the AI manifest for **ephapaxiser**. It declares:
 - Canonical file locations (where things MUST be, and nowhere else)
 - Critical invariants (rules that must NEVER be violated)
 - Repository structure and organization
+
+**ephapaxiser** enforces single-use linear type semantics on resources via
+Ephapax. It analyses code for resource handles (file descriptors, database
+connections, GPU buffers, crypto keys, session tokens), inserts Ephapax linear
+type wrappers, and enforces exactly-once usage at compile time. This prevents
+resource leaks, double-frees, and use-after-free bugs structurally.
 
 ## CANONICAL LOCATIONS (UNIVERSAL RULE)
 
 ### Machine-Readable Metadata: `.machine_readable/` ONLY
 
-These 6 a2ml files MUST exist in `.machine_readable/` directory ONLY:
+These 6 a2ml files MUST exist in `.machine_readable/6a2/` directory ONLY:
 1. **STATE.a2ml** - Project state, progress, blockers
 2. **META.a2ml** - Architecture decisions, governance
-3. **ECOSYSTEM.a2ml** - Position in ecosystem, relationships
+3. **ECOSYSTEM.a2ml** - Position in -iser ecosystem, relationships
 4. **AGENTIC.a2ml** - AI agent interaction patterns
-5. **NEUROSYM.a2ml** - Neurosymbolic integration config
+5. **NEUROSYM.a2ml** - Neurosymbolic integration config (Hypatia)
 6. **PLAYBOOK.a2ml** - Operational runbook
 
 **CRITICAL:** If ANY of these files exist in the root directory, this is an ERROR.
@@ -46,7 +55,7 @@ Do not place maintenance policy files in repository root.
 
 ### Bot Directives: `.machine_readable/bot_directives/` ONLY
 
-Bot-specific instructions for your automated agents.
+Bot-specific instructions for automated agents (rhodibot, echidnabot, etc.).
 
 ### Contractiles: `.machine_readable/contractiles/` ONLY
 
@@ -55,7 +64,7 @@ Policy enforcement contracts (k9, dust, lust, must, trust).
 ### AI Configuration & Guides: `.machine_readable/ai/` ONLY
 
 - `AI.a2ml` - Language-specific or LLM-specific patterns
-- `PLACEHOLDERS.md` - Bootstrap guide
+- `PLACEHOLDERS.adoc` - Bootstrap guide
 
 ### Community & Forge Metadata: `.github/` ONLY
 
@@ -69,6 +78,7 @@ Policy enforcement contracts (k9, dust, lust, must, trust).
 ### Agent Instructions
 
 - `0-AI-MANIFEST.a2ml` - THIS FILE (universal entry point)
+- `.claude/CLAUDE.md` - Claude Code project-specific instructions
 
 ## CORE INVARIANTS
 
@@ -80,42 +90,79 @@ Policy enforcement contracts (k9, dust, lust, must, trust).
 6. **Container images** - MUST use Chainguard base (`cgr.dev/chainguard/wolfi-base:latest` or `cgr.dev/chainguard/static:latest`)
 7. **Container runtime** - Podman, never Docker. Files are `Containerfile`, never `Dockerfile`
 8. **Container orchestration** - `selur-compose`, never `docker-compose`
+9. **Idris2 wins** - When Idris2 proofs conflict with Ephapax linear types, Idris2 always wins. The formally verified proofs are the source of truth.
+10. **No dangerous patterns** - Never use `believe_me`, `assert_total`, `unsafeCoerce`, `Obj.magic`, `sorry`, or `Admitted` in any code.
 
 ## REPOSITORY STRUCTURE
 
 This repo follows the **Dual-Track** architecture:
 
 ```
-[YOUR-REPO-NAME]/
+ephapaxiser/
 ├── 0-AI-MANIFEST.a2ml         # THIS FILE (start here)
-├── README.adoc                 # High-level orientation (Rich Human)
-├── ROADMAP.adoc                # Future direction
+├── README.adoc                 # High-level orientation
+├── ROADMAP.adoc                # Phase plan (0-6)
+├── TOPOLOGY.md                 # Repository structure map
 ├── CONTRIBUTING.adoc           # Human contribution guide
-├── GOVERNANCE.adoc             # Decision-making model
 ├── Justfile                    # Task runner
-├── Containerfile               # OCI build
-├── LICENSE                     # Primary license
-├── src/                        # Source code
+├── Containerfile               # OCI build (Chainguard base)
+├── Cargo.toml                  # Rust package definition
+├── LICENSE                     # PMPL-1.0-or-later
+├── src/                        # Rust source + verified interface seams
+│   ├── main.rs                 # CLI entry point (clap)
+│   ├── lib.rs                  # Library root
+│   ├── manifest/               # ephapaxiser.toml parser
+│   ├── codegen/                # Ephapax wrapper code generation
+│   ├── abi/                    # Rust-side ABI bindings
 │   └── interface/              # Verified Interface Seams
-│       ├── abi/                # Idris2 ABI (The Spec)
-│       ├── ffi/                # Zig FFI (The Bridge)
-│       └── generated/          # C Headers (The Result)
+│       ├── abi/                # Idris2 ABI — THE SPEC
+│       │   ├── Types.idr       # LinearResource, UsageCount, ConsumeProof
+│       │   ├── Layout.idr      # ResourceTracker struct layout proofs
+│       │   └── Foreign.idr     # FFI: analyse, wrap, consume, enforce
+│       ├── ffi/                # Zig FFI — THE BRIDGE
+│       │   ├── build.zig       # Shared + static library build
+│       │   ├── src/main.zig    # C-ABI implementation
+│       │   └── test/           # Integration tests
+│       └── generated/          # Auto-generated C headers
 ├── container/                  # Stapeln container ecosystem
-├── docs/                       # Technical depths
-│   ├── attribution/            # Citations, owners, maintainers (adoc)
-│   ├── architecture/           # Topology, diagrams
-│   ├── theory/                 # Domain theory
-│   └── practice/               # Manuals
-├── docs/legal/                  # Legal exhibits and full texts
+├── docs/                       # Technical documentation
+├── examples/                   # Usage examples
+├── tests/                      # Integration tests
+├── verification/               # Formal verification artifacts
 └── .machine_readable/          # ALL machine-readable metadata
+    ├── 6a2/                    # A2ML state files (STATE, META, ECOSYSTEM, etc.)
+    ├── ai/                     # AI configuration
+    ├── anchors/                # Semantic boundary declarations
+    ├── bot_directives/         # Bot instructions
+    ├── compliance/             # REUSE dep5, cargo-deny
+    ├── configs/                # git-cliff, etc.
+    ├── contractiles/           # K9, must, trust, dust, lust
+    ├── integrations/           # proven, verisimdb, vexometer
+    ├── policies/               # Maintenance axes, checklist, SDA
+    └── scripts/                # Forge sync, lifecycle, verification
 ```
+
+## KEY ARCHITECTURE NOTES
+
+- **Data flow**: `ephapaxiser.toml` manifest -> resource analysis -> Idris2 ABI
+  proofs of linearity -> Zig FFI bridge -> Ephapax codegen -> wrapped source code
+- **Idris2 ABI types**: `LinearResource`, `UsageCount`, `ResourceLifecycle`,
+  `ConsumeProof`, `ResourceKind`
+- **Resource kinds**: FileHandle, Socket, DbConnection, GpuBuffer, CryptoKey,
+  SessionToken, HeapAlloc, Custom
+- **Target languages**: Rust, C, Zig
+- **Zero runtime overhead**: all proofs erased at compile time
 
 ## SESSION STARTUP CHECKLIST
 
-✅ Read THIS file (0-AI-MANIFEST.a2ml) first
-✅ Understand canonical location: `.machine_readable/`
-✅ State understanding of canonical locations
+Read THIS file (0-AI-MANIFEST.a2ml) first
+Understand canonical location: `.machine_readable/`
+Note invariant #9: Idris2 always wins over Ephapax when they conflict
 
 ## ATTESTATION PROOF
 
-**"I have read the AI manifest. All machine-readable content (state files, anchors, policies, bot directives, contractiles, AI guides) is located in `.machine_readable/` ONLY, and community metadata is in `.github/`. I will not create duplicate files in the root directory."**
+**"I have read the AI manifest for ephapaxiser. All machine-readable content
+(state files, anchors, policies, bot directives, contractiles, AI guides) is
+located in `.machine_readable/` ONLY, and community metadata is in `.github/`.
+I will not create duplicate files in the root directory. I understand that
+Idris2 proofs are authoritative when they conflict with Ephapax linear types."**

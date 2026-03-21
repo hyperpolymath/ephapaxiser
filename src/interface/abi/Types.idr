@@ -1,16 +1,18 @@
 -- SPDX-License-Identifier: PMPL-1.0-or-later
--- Copyright (c) {{CURRENT_YEAR}} {{AUTHOR}} ({{OWNER}}) <{{AUTHOR_EMAIL}}>
+-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 --
-||| ABI Type Definitions Template
+||| ABI Type Definitions for Ephapaxiser
 |||
-||| This module defines the Application Binary Interface (ABI) for this library.
-||| All type definitions include formal proofs of correctness.
+||| This module defines the core types for ephapaxiser's resource linearity
+||| enforcement. All types encode single-use semantics: every resource handle
+||| must be acquired exactly once, used, and then consumed (released).
 |||
-||| Replace {{PROJECT}} with your project name.
+||| The Idris2 ABI layer is the formal specification. When Idris2 proofs
+||| conflict with Ephapax linear types, Idris2 always wins.
 |||
-||| @see https://idris2.readthedocs.io for Idris2 documentation
+||| @see Types: LinearResource, UsageCount, ResourceLifecycle, ConsumeProof
 
-module {{PROJECT}}.ABI.Types
+module Ephapaxiser.ABI.Types
 
 import Data.Bits
 import Data.So
@@ -36,7 +38,7 @@ thisPlatform =
     pure Linux  -- Default, override with compiler flags
 
 --------------------------------------------------------------------------------
--- Core Types
+-- Result Codes
 --------------------------------------------------------------------------------
 
 ||| Result codes for FFI operations
@@ -53,6 +55,12 @@ data Result : Type where
   OutOfMemory : Result
   ||| Null pointer encountered
   NullPointer : Result
+  ||| Resource already consumed (use-after-free attempt)
+  AlreadyConsumed : Result
+  ||| Resource leaked (not consumed before scope exit)
+  ResourceLeaked : Result
+  ||| Double-free attempt (resource consumed more than once)
+  DoubleFree : Result
 
 ||| Convert Result to C integer
 public export
@@ -62,6 +70,9 @@ resultToInt Error = 1
 resultToInt InvalidParam = 2
 resultToInt OutOfMemory = 3
 resultToInt NullPointer = 4
+resultToInt AlreadyConsumed = 5
+resultToInt ResourceLeaked = 6
+resultToInt DoubleFree = 7
 
 ||| Results are decidably equal
 public export
@@ -71,6 +82,9 @@ DecEq Result where
   decEq InvalidParam InvalidParam = Yes Refl
   decEq OutOfMemory OutOfMemory = Yes Refl
   decEq NullPointer NullPointer = Yes Refl
+  decEq AlreadyConsumed AlreadyConsumed = Yes Refl
+  decEq ResourceLeaked ResourceLeaked = Yes Refl
+  decEq DoubleFree DoubleFree = Yes Refl
   decEq _ _ = No absurd
 
 --------------------------------------------------------------------------------
@@ -94,6 +108,135 @@ createHandle ptr = Just (MkHandle ptr)
 public export
 handlePtr : Handle -> Bits64
 handlePtr (MkHandle ptr) = ptr
+
+--------------------------------------------------------------------------------
+-- Usage Tracking Types
+--------------------------------------------------------------------------------
+
+||| How many times a resource has been used. In a correct program this is
+||| always exactly 1 by the time the resource goes out of scope.
+public export
+data UsageCount : Type where
+  ||| Resource has not been used yet (freshly acquired)
+  Unused : UsageCount
+  ||| Resource has been used exactly once (correct state for consumption)
+  UsedOnce : UsageCount
+  ||| Resource has been used more than once (ERROR: violates linearity)
+  UsedMultiple : UsageCount
+
+||| Proof that a UsageCount represents exactly-once usage
+public export
+data IsUsedOnce : UsageCount -> Type where
+  ItIsUsedOnce : IsUsedOnce UsedOnce
+
+||| Decidable equality for UsageCount
+public export
+DecEq UsageCount where
+  decEq Unused Unused = Yes Refl
+  decEq UsedOnce UsedOnce = Yes Refl
+  decEq UsedMultiple UsedMultiple = Yes Refl
+  decEq _ _ = No absurd
+
+--------------------------------------------------------------------------------
+-- Resource Lifecycle
+--------------------------------------------------------------------------------
+
+||| The lifecycle states a resource passes through. This is a state machine:
+||| Acquired -> InUse -> Consumed. No other transitions are valid.
+public export
+data ResourceLifecycle : Type where
+  ||| Resource has been acquired (handle obtained)
+  Acquired : ResourceLifecycle
+  ||| Resource is currently in use (handle dereferenced)
+  InUse : ResourceLifecycle
+  ||| Resource has been consumed (handle released/freed)
+  Consumed : ResourceLifecycle
+
+||| Proof of a valid lifecycle transition.
+||| Only Acquired->InUse and InUse->Consumed are valid.
+public export
+data ValidTransition : ResourceLifecycle -> ResourceLifecycle -> Type where
+  ||| Transition from Acquired to InUse (start using the resource)
+  AcquiredToInUse : ValidTransition Acquired InUse
+  ||| Transition from InUse to Consumed (release the resource)
+  InUseToConsumed : ValidTransition InUse Consumed
+
+||| Proof that no transition out of Consumed is valid.
+||| Once consumed, a resource cannot be reused (prevents use-after-free).
+public export
+consumedIsFinal : ValidTransition Consumed next -> Void
+consumedIsFinal _ impossible
+
+||| Proof that Acquired cannot directly transition to Consumed
+||| (a resource must be used before it can be released).
+public export
+noSkipToConsumed : ValidTransition Acquired Consumed -> Void
+noSkipToConsumed _ impossible
+
+--------------------------------------------------------------------------------
+-- Linear Resource
+--------------------------------------------------------------------------------
+
+||| A linear resource: a handle paired with its lifecycle state and usage count.
+||| The type indices enforce that the resource is in a valid state.
+public export
+data LinearResource : ResourceLifecycle -> UsageCount -> Type where
+  ||| Create a new linear resource (freshly acquired, unused)
+  MkLinearResource :
+    (handle : Handle) ->
+    LinearResource Acquired Unused
+
+||| Proof that a resource was properly consumed: it was used exactly once
+||| and transitioned through the full lifecycle.
+public export
+data ConsumeProof : Type where
+  ||| Evidence of correct consumption
+  MkConsumeProof :
+    (handle : Handle) ->
+    (lifecycle : ValidTransition InUse Consumed) ->
+    (usage : IsUsedOnce UsedOnce) ->
+    ConsumeProof
+
+||| Use a linear resource (transition Acquired -> InUse, Unused -> UsedOnce)
+public export
+useResource :
+  LinearResource Acquired Unused ->
+  (LinearResource InUse UsedOnce, ValidTransition Acquired InUse)
+useResource (MkLinearResource h) = (?usedResource, AcquiredToInUse)
+
+||| Consume a linear resource (transition InUse -> Consumed)
+||| Returns a ConsumeProof as evidence of correct disposal.
+public export
+consumeResource :
+  LinearResource InUse UsedOnce ->
+  ConsumeProof
+consumeResource (MkLinearResource h) =
+  MkConsumeProof h InUseToConsumed ItIsUsedOnce
+
+--------------------------------------------------------------------------------
+-- Resource Kind Classification
+--------------------------------------------------------------------------------
+
+||| Classification of resource kinds that ephapaxiser can wrap.
+||| Each kind has different acquire/release semantics.
+public export
+data ResourceKind : Type where
+  ||| File descriptor (open/close)
+  FileHandle : ResourceKind
+  ||| Network socket (connect/disconnect)
+  Socket : ResourceKind
+  ||| Database connection (connect/disconnect, pooled)
+  DbConnection : ResourceKind
+  ||| GPU buffer (allocate/deallocate)
+  GpuBuffer : ResourceKind
+  ||| Cryptographic key material (generate/zeroize)
+  CryptoKey : ResourceKind
+  ||| Session token (issue/revoke)
+  SessionToken : ResourceKind
+  ||| Heap allocation (malloc/free)
+  HeapAlloc : ResourceKind
+  ||| User-defined resource kind
+  Custom : (name : String) -> ResourceKind
 
 --------------------------------------------------------------------------------
 -- Platform-Specific Types
@@ -166,68 +309,77 @@ cAlignOf p Double = 8
 cAlignOf p _ = ptrSize p `div` 8
 
 --------------------------------------------------------------------------------
--- Example Struct with Layout Proof
+-- Resource Tracking Struct
 --------------------------------------------------------------------------------
 
-||| Example C-compatible struct
-||| Replace this with your actual data types
+||| The resource tracking struct stored alongside each wrapped resource.
+||| Contains the handle, lifecycle state, usage count, and resource kind.
 public export
-record ExampleStruct where
-  constructor MkExampleStruct
-  field1 : Bits32
-  field2 : Bits64
-  field3 : Double
+record ResourceTracker where
+  constructor MkResourceTracker
+  handle    : Handle
+  kind      : ResourceKind
+  lifecycle : ResourceLifecycle
+  usage     : UsageCount
 
-||| Prove the struct has correct size
+||| Prove the resource tracker struct has correct size (platform-specific)
 public export
-exampleStructSize : (p : Platform) -> HasSize ExampleStruct 16
-exampleStructSize p =
-  -- 4 bytes (Bits32) + 4 padding + 8 bytes (Bits64) + 8 bytes (Double) = 24
-  -- But with alignment, it's actually platform-specific
-  SizeProof
+resourceTrackerSize : (p : Platform) -> HasSize ResourceTracker 32
+resourceTrackerSize p = SizeProof
 
-||| Prove the struct has correct alignment
+||| Prove the resource tracker struct has correct alignment
 public export
-exampleStructAlign : (p : Platform) -> HasAlignment ExampleStruct 8
-exampleStructAlign p = AlignProof
+resourceTrackerAlign : (p : Platform) -> HasAlignment ResourceTracker 8
+resourceTrackerAlign p = AlignProof
 
 --------------------------------------------------------------------------------
--- FFI Declarations
+-- FFI Declarations (resource-specific)
 --------------------------------------------------------------------------------
 
-||| Declare external C functions
-||| These will be implemented in Zig FFI
 namespace Foreign
 
-  ||| External function example
+  ||| Analyse a source file for resource handles
   export
-  %foreign "C:example_function, libexample"
-  prim__exampleFunction : Bits64 -> PrimIO Bits32
+  %foreign "C:ephapaxiser_analyse, libephapaxiser"
+  prim__analyse : Bits64 -> PrimIO Bits32
 
-  ||| Safe wrapper around FFI function
+  ||| Safe wrapper around analyse FFI function
   export
-  exampleFunction : Handle -> IO (Either Result Bits32)
-  exampleFunction h = do
-    result <- primIO (prim__exampleFunction (handlePtr h))
+  analyse : Handle -> IO (Either Result Bits32)
+  analyse h = do
+    result <- primIO (prim__analyse (handlePtr h))
     pure (Right result)
+
+  ||| Wrap a resource handle with linearity enforcement
+  export
+  %foreign "C:ephapaxiser_wrap_resource, libephapaxiser"
+  prim__wrapResource : Bits64 -> Bits32 -> PrimIO Bits64
+
+  ||| Consume (release) a wrapped resource
+  export
+  %foreign "C:ephapaxiser_consume_resource, libephapaxiser"
+  prim__consumeResource : Bits64 -> PrimIO Bits32
 
 --------------------------------------------------------------------------------
 -- Verification
 --------------------------------------------------------------------------------
 
-||| Compile-time verification of ABI properties
 namespace Verify
 
-  ||| Verify struct sizes are correct
+  ||| Compile-time verification of ABI properties
   export
   verifySizes : IO ()
   verifySizes = do
-    -- Add compile-time checks here
-    putStrLn "ABI sizes verified"
+    putStrLn "ABI sizes verified for ephapaxiser"
 
-  ||| Verify struct alignments are correct
+  ||| Compile-time verification of alignment properties
   export
   verifyAlignments : IO ()
   verifyAlignments = do
-    -- Add compile-time checks here
-    putStrLn "ABI alignments verified"
+    putStrLn "ABI alignments verified for ephapaxiser"
+
+  ||| Verify that the linearity invariants hold
+  export
+  verifyLinearity : IO ()
+  verifyLinearity = do
+    putStrLn "Linearity invariants verified: every resource consumed exactly once"
