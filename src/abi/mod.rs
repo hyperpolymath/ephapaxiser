@@ -146,6 +146,14 @@ pub struct LinearResource {
     pub state: OwnershipState,
     /// Where this resource was allocated (set during analysis).
     pub allocation_site: Option<SourceLocation>,
+    /// Which region this resource belongs to (if any).
+    ///
+    /// When set, the resource's lifetime is bounded by the region — it cannot
+    /// escape the region's scope. At region exit, all linear resources in the
+    /// region must have been consumed (AllLinearsConsumed from the formal proofs).
+    /// This field mirrors Ephapax's region-linear fusion: the region constraint
+    /// is orthogonal to the ownership state tracking.
+    pub region: Option<String>,
 }
 
 impl LinearResource {
@@ -158,6 +166,7 @@ impl LinearResource {
             kind,
             state: OwnershipState::Uninitialized,
             allocation_site: None,
+            region: None,
         }
     }
 }
@@ -183,6 +192,24 @@ pub enum Violation {
         /// Where the second (invalid) deallocation occurred.
         second_free: SourceLocation,
     },
+    /// Resource escapes its region scope — region escape.
+    RegionEscape {
+        /// Name of the escaping resource.
+        resource_name: String,
+        /// The region the resource belongs to.
+        region: String,
+        /// Where the escape was detected.
+        escape_site: SourceLocation,
+    },
+    /// Linear resource in a region not consumed before region exit.
+    RegionLinearNotConsumed {
+        /// Name of the unconsumed resource.
+        resource_name: String,
+        /// The region that is exiting.
+        region: String,
+        /// Where the resource was allocated.
+        allocation_site: SourceLocation,
+    },
     /// Resource was used after being deallocated — use-after-free.
     UseAfterFree {
         /// Name of the misused resource.
@@ -205,6 +232,20 @@ impl fmt::Display for Violation {
                     f,
                     "DOUBLE-FREE: '{}' freed at {} and again at {}",
                     resource_name, first_free, second_free
+                )
+            }
+            Self::RegionEscape { resource_name, region, escape_site } => {
+                write!(
+                    f,
+                    "REGION-ESCAPE: '{}' in region '{}' escapes at {}",
+                    resource_name, region, escape_site
+                )
+            }
+            Self::RegionLinearNotConsumed { resource_name, region, allocation_site } => {
+                write!(
+                    f,
+                    "REGION-LINEAR-NOT-CONSUMED: '{}' in region '{}' allocated at {} not consumed before region exit",
+                    resource_name, region, allocation_site
                 )
             }
             Self::UseAfterFree { resource_name, free_site, use_site } => {

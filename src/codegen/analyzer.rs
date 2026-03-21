@@ -167,6 +167,7 @@ pub fn analyse(
             kind: var.kind.clone(),
             state: var.state.clone(),
             allocation_site: Some(var.allocation_site.clone()),
+            region: None, // Phase 2: populated when scope-aware analysis is added.
         });
     }
 
