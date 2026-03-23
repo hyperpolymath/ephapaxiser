@@ -224,31 +224,54 @@ pub enum Violation {
 impl fmt::Display for Violation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Leak { resource_name, allocation_site } => {
-                write!(f, "LEAK: '{}' allocated at {} was never deallocated", resource_name, allocation_site)
+            Self::Leak {
+                resource_name,
+                allocation_site,
+            } => {
+                write!(
+                    f,
+                    "LEAK: '{}' allocated at {} was never deallocated",
+                    resource_name, allocation_site
+                )
             }
-            Self::DoubleFree { resource_name, first_free, second_free } => {
+            Self::DoubleFree {
+                resource_name,
+                first_free,
+                second_free,
+            } => {
                 write!(
                     f,
                     "DOUBLE-FREE: '{}' freed at {} and again at {}",
                     resource_name, first_free, second_free
                 )
             }
-            Self::RegionEscape { resource_name, region, escape_site } => {
+            Self::RegionEscape {
+                resource_name,
+                region,
+                escape_site,
+            } => {
                 write!(
                     f,
                     "REGION-ESCAPE: '{}' in region '{}' escapes at {}",
                     resource_name, region, escape_site
                 )
             }
-            Self::RegionLinearNotConsumed { resource_name, region, allocation_site } => {
+            Self::RegionLinearNotConsumed {
+                resource_name,
+                region,
+                allocation_site,
+            } => {
                 write!(
                     f,
                     "REGION-LINEAR-NOT-CONSUMED: '{}' in region '{}' allocated at {} not consumed before region exit",
                     resource_name, region, allocation_site
                 )
             }
-            Self::UseAfterFree { resource_name, free_site, use_site } => {
+            Self::UseAfterFree {
+                resource_name,
+                free_site,
+                use_site,
+            } => {
                 write!(
                     f,
                     "USE-AFTER-FREE: '{}' freed at {} but used at {}",
@@ -290,17 +313,26 @@ impl AnalysisResult {
 
     /// Count violations by category.
     pub fn leak_count(&self) -> usize {
-        self.violations.iter().filter(|v| matches!(v, Violation::Leak { .. })).count()
+        self.violations
+            .iter()
+            .filter(|v| matches!(v, Violation::Leak { .. }))
+            .count()
     }
 
     /// Count double-free violations.
     pub fn double_free_count(&self) -> usize {
-        self.violations.iter().filter(|v| matches!(v, Violation::DoubleFree { .. })).count()
+        self.violations
+            .iter()
+            .filter(|v| matches!(v, Violation::DoubleFree { .. }))
+            .count()
     }
 
     /// Count use-after-free violations.
     pub fn use_after_free_count(&self) -> usize {
-        self.violations.iter().filter(|v| matches!(v, Violation::UseAfterFree { .. })).count()
+        self.violations
+            .iter()
+            .filter(|v| matches!(v, Violation::UseAfterFree { .. }))
+            .count()
     }
 }
 
@@ -324,7 +356,10 @@ mod tests {
             ("allocation", ResourceKind::Allocation),
             ("gpu-buffer", ResourceKind::GpuBuffer),
             ("db-connection", ResourceKind::DbConnection),
-            ("custom-thing", ResourceKind::Custom("custom-thing".to_string())),
+            (
+                "custom-thing",
+                ResourceKind::Custom("custom-thing".to_string()),
+            ),
         ];
         for (s, expected) in &kinds {
             let parsed = ResourceKind::from_str_loose(s);
@@ -336,7 +371,10 @@ mod tests {
     /// Verify ownership state display formatting.
     #[test]
     fn test_ownership_state_display() {
-        assert_eq!(format!("{}", OwnershipState::Uninitialized), "uninitialized");
+        assert_eq!(
+            format!("{}", OwnershipState::Uninitialized),
+            "uninitialized"
+        );
         assert_eq!(format!("{}", OwnershipState::Owned), "owned");
         assert_eq!(format!("{}", OwnershipState::Borrowed), "borrowed");
         assert_eq!(format!("{}", OwnershipState::Consumed), "consumed");
@@ -345,7 +383,11 @@ mod tests {
     /// Verify violation display formatting includes location info.
     #[test]
     fn test_violation_display() {
-        let loc = SourceLocation { file: "test.rs".to_string(), line: 10, column: 5 };
+        let loc = SourceLocation {
+            file: "test.rs".to_string(),
+            line: 10,
+            column: 5,
+        };
         let leak = Violation::Leak {
             resource_name: "fd".to_string(),
             allocation_site: loc.clone(),
@@ -357,7 +399,11 @@ mod tests {
     /// Verify AnalysisResult counting methods.
     #[test]
     fn test_analysis_result_counts() {
-        let loc = SourceLocation { file: "t.rs".to_string(), line: 1, column: 0 };
+        let loc = SourceLocation {
+            file: "t.rs".to_string(),
+            line: 1,
+            column: 0,
+        };
         let mut result = AnalysisResult::new();
         assert!(result.is_clean());
 

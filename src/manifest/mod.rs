@@ -120,19 +120,15 @@ impl ResourceEntry {
 /// Supported output report formats.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum ReportFormat {
     /// Plain text output.
+    #[default]
     Text,
     /// JSON output.
     Json,
     /// A2ML output (for machine-readable AI manifests).
     A2ml,
-}
-
-impl Default for ReportFormat {
-    fn default() -> Self {
-        Self::Text
-    }
 }
 
 /// Analysis configuration — controls which violation types to detect and output format.
@@ -172,8 +168,8 @@ impl Default for AnalysisConfig {
 ///
 /// Returns the parsed `Manifest` or an error with context about what went wrong.
 pub fn load_manifest(path: &str) -> Result<Manifest> {
-    let content =
-        std::fs::read_to_string(path).with_context(|| format!("Failed to read manifest: {}", path))?;
+    let content = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to read manifest: {}", path))?;
     toml::from_str(&content).with_context(|| format!("Failed to parse manifest: {}", path))
 }
 
@@ -216,7 +212,10 @@ pub fn validate(manifest: &Manifest) -> Result<()> {
 pub fn init_manifest(path: &str) -> Result<()> {
     let manifest_path = Path::new(path).join("ephapaxiser.toml");
     if manifest_path.exists() {
-        anyhow::bail!("ephapaxiser.toml already exists at {}", manifest_path.display());
+        anyhow::bail!(
+            "ephapaxiser.toml already exists at {}",
+            manifest_path.display()
+        );
     }
 
     let content = r#"# SPDX-License-Identifier: PMPL-1.0-or-later
@@ -263,11 +262,17 @@ pub fn print_info(m: &Manifest) {
     }
     println!("Resources ({}):", m.resources.len());
     for r in &m.resources {
-        println!("  - {} (alloc: {}, dealloc: {}, kind: {})", r.name, r.allocator, r.deallocator, r.kind);
+        println!(
+            "  - {} (alloc: {}, dealloc: {}, kind: {})",
+            r.name, r.allocator, r.deallocator, r.kind
+        );
     }
     println!("Analysis:");
     println!("  detect-leaks: {}", m.analysis.detect_leaks);
     println!("  detect-double-free: {}", m.analysis.detect_double_free);
-    println!("  detect-use-after-free: {}", m.analysis.detect_use_after_free);
+    println!(
+        "  detect-use-after-free: {}",
+        m.analysis.detect_use_after_free
+    );
     println!("  report-format: {:?}", m.analysis.report_format);
 }

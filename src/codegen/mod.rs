@@ -47,7 +47,11 @@ pub fn analyse_manifest(manifest: &Manifest, base_dir: &str) -> Result<AnalysisR
         all_sites.extend(sites);
     }
 
-    Ok(analyzer::analyse(&all_sites, &manifest.resources, &manifest.analysis))
+    Ok(analyzer::analyse(
+        &all_sites,
+        &manifest.resources,
+        &manifest.analysis,
+    ))
 }
 
 /// Generate Ephapax linear type wrappers and analysis report.
@@ -93,10 +97,7 @@ pub fn generate_all(manifest: &Manifest, output_dir: &str) -> Result<()> {
             println!("  Generated: {}", report_path.display());
 
             // Print summary.
-            println!(
-                "\n  Analysis summary for '{}':",
-                manifest.project.name
-            );
+            println!("\n  Analysis summary for '{}':", manifest.project.name);
             println!("    Resources tracked: {}", result.tracked_resources.len());
             println!("    Allocations found: {}", result.allocation_count);
             println!("    Deallocations found: {}", result.deallocation_count);
@@ -110,7 +111,10 @@ pub fn generate_all(manifest: &Manifest, output_dir: &str) -> Result<()> {
             }
         }
         Err(e) => {
-            println!("  Note: Source analysis skipped ({}). Wrappers generated from manifest only.", e);
+            println!(
+                "  Note: Source analysis skipped ({}). Wrappers generated from manifest only.",
+                e
+            );
         }
     }
 
@@ -125,11 +129,20 @@ fn format_report(result: &AnalysisResult, manifest: &Manifest) -> String {
         }
         _ => {
             let mut report = String::new();
-            report.push_str(&format!("ephapaxiser analysis report for '{}'\n", manifest.project.name));
-            report.push_str(&format!("========================================\n\n"));
+            report.push_str(&format!(
+                "ephapaxiser analysis report for '{}'\n",
+                manifest.project.name
+            ));
+            report.push_str("========================================\n\n");
             report.push_str(&format!("Allocations found: {}\n", result.allocation_count));
-            report.push_str(&format!("Deallocations found: {}\n", result.deallocation_count));
-            report.push_str(&format!("Resources tracked: {}\n\n", result.tracked_resources.len()));
+            report.push_str(&format!(
+                "Deallocations found: {}\n",
+                result.deallocation_count
+            ));
+            report.push_str(&format!(
+                "Resources tracked: {}\n\n",
+                result.tracked_resources.len()
+            ));
 
             if result.is_clean() {
                 report.push_str("No violations detected. All resources used exactly once.\n");
@@ -147,14 +160,20 @@ fn format_report(result: &AnalysisResult, manifest: &Manifest) -> String {
 
 /// Placeholder build command (Phase 2 will compile generated wrappers).
 pub fn build(manifest: &Manifest, _release: bool) -> Result<()> {
-    println!("Building ephapaxiser wrappers for: {}", manifest.project.name);
+    println!(
+        "Building ephapaxiser wrappers for: {}",
+        manifest.project.name
+    );
     println!("  (Phase 1: wrappers are generated as source — compile them with your project)");
     Ok(())
 }
 
 /// Placeholder run command (Phase 2 will execute analysis as a standalone pass).
 pub fn run(manifest: &Manifest, _args: &[String]) -> Result<()> {
-    println!("Running ephapaxiser analysis for: {}", manifest.project.name);
+    println!(
+        "Running ephapaxiser analysis for: {}",
+        manifest.project.name
+    );
     println!("  (Use 'ephapaxiser generate' to produce wrappers and analysis report)");
     Ok(())
 }

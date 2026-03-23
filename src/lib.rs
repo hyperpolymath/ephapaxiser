@@ -1,3 +1,10 @@
+#![allow(
+    dead_code,
+    clippy::too_many_arguments,
+    clippy::manual_strip,
+    clippy::if_same_then_else,
+    clippy::vec_init_then_push
+)]
 #![forbid(unsafe_code)]
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
@@ -17,7 +24,7 @@ pub mod codegen;
 pub mod manifest;
 
 pub use abi::{AnalysisResult, LinearResource, OwnershipState, ResourceKind, Violation};
-pub use manifest::{load_manifest, validate, Manifest};
+pub use manifest::{Manifest, load_manifest, validate};
 
 /// Convenience function: load manifest, validate, generate wrappers and analysis report.
 ///

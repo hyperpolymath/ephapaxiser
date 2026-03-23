@@ -11,9 +11,7 @@
 //
 // Design note: When Idris2 proofs conflict with Ephapax linear types, Idris2 ALWAYS wins.
 
-use ephapaxiser::abi::{
-    LinearResource, OwnershipState, ResourceKind, SourceLocation, Violation,
-};
+use ephapaxiser::abi::{LinearResource, OwnershipState, ResourceKind, SourceLocation, Violation};
 use ephapaxiser::codegen::analyzer;
 use ephapaxiser::codegen::parser::{self, CallSite, CallSiteKind};
 use ephapaxiser::codegen::wrapper_gen;
@@ -24,7 +22,9 @@ use ephapaxiser::manifest::{
 /// Helper: create a minimal valid manifest for testing.
 fn test_manifest() -> Manifest {
     Manifest {
-        project: ProjectConfig { name: "test-project".to_string() },
+        project: ProjectConfig {
+            name: "test-project".to_string(),
+        },
         sources: vec![SourceEntry {
             name: "test-source".to_string(),
             path: "src/test.rs".to_string(),
@@ -50,7 +50,11 @@ fn test_manifest() -> Manifest {
 
 /// Helper: create a source location.
 fn loc(file: &str, line: usize) -> SourceLocation {
-    SourceLocation { file: file.to_string(), line, column: 0 }
+    SourceLocation {
+        file: file.to_string(),
+        line,
+        column: 0,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -66,7 +70,10 @@ fn test_init_creates_manifest() {
     ephapaxiser::manifest::init_manifest(path).expect("init_manifest failed");
 
     let manifest_path = tmp_dir.path().join("ephapaxiser.toml");
-    assert!(manifest_path.exists(), "ephapaxiser.toml should exist after init");
+    assert!(
+        manifest_path.exists(),
+        "ephapaxiser.toml should exist after init"
+    );
 
     // The created manifest should be parseable and valid.
     let manifest = ephapaxiser::manifest::load_manifest(manifest_path.to_str().unwrap())
@@ -77,7 +84,10 @@ fn test_init_creates_manifest() {
 
     // Init should fail if manifest already exists.
     let result = ephapaxiser::manifest::init_manifest(path);
-    assert!(result.is_err(), "init_manifest should fail if file already exists");
+    assert!(
+        result.is_err(),
+        "init_manifest should fail if file already exists"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -100,9 +110,18 @@ fn test_generate_produces_wrappers() {
     );
 
     // Verify essential methods are present.
-    assert!(output.contains("pub fn new(raw: T) -> Self"), "Should have constructor");
-    assert!(output.contains("pub fn consume(mut self) -> T"), "Should have consume method");
-    assert!(output.contains("pub fn borrow(&self) -> &T"), "Should have borrow method");
+    assert!(
+        output.contains("pub fn new(raw: T) -> Self"),
+        "Should have constructor"
+    );
+    assert!(
+        output.contains("pub fn consume(mut self) -> T"),
+        "Should have consume method"
+    );
+    assert!(
+        output.contains("pub fn borrow(&self) -> &T"),
+        "Should have borrow method"
+    );
 
     // Verify Drop is implemented (leak detection at runtime).
     assert!(
@@ -111,8 +130,14 @@ fn test_generate_produces_wrappers() {
     );
 
     // Verify the wrappers reference the correct allocator/deallocator names.
-    assert!(output.contains("open()"), "Should reference allocator in docs");
-    assert!(output.contains("close()"), "Should reference deallocator in docs");
+    assert!(
+        output.contains("open()"),
+        "Should reference allocator in docs"
+    );
+    assert!(
+        output.contains("close()"),
+        "Should reference deallocator in docs"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +158,10 @@ fn test_generate_writes_files() {
     assert!(wrappers_path.exists(), "wrappers.rs should be generated");
 
     let content = std::fs::read_to_string(&wrappers_path).expect("Failed to read wrappers.rs");
-    assert!(content.contains("LinearFileHandle"), "wrappers.rs should contain LinearFileHandle");
+    assert!(
+        content.contains("LinearFileHandle"),
+        "wrappers.rs should contain LinearFileHandle"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +188,10 @@ fn test_detect_leak() {
 
     // Verify the violation details.
     match &result.violations[0] {
-        Violation::Leak { resource_name, allocation_site } => {
+        Violation::Leak {
+            resource_name,
+            allocation_site,
+        } => {
             assert_eq!(resource_name, "FileHandle");
             assert_eq!(allocation_site.line, 1);
         }
@@ -186,12 +217,20 @@ fn test_detect_double_free() {
     let sites = parser::parse_source(source, "test.rs", &resources);
     let result = analyzer::analyse(&sites, &resources, &AnalysisConfig::default());
 
-    assert_eq!(result.double_free_count(), 1, "Should detect exactly one double-free");
+    assert_eq!(
+        result.double_free_count(),
+        1,
+        "Should detect exactly one double-free"
+    );
     assert_eq!(result.leak_count(), 0);
 
     // Verify the violation details.
     match &result.violations[0] {
-        Violation::DoubleFree { resource_name, first_free, second_free } => {
+        Violation::DoubleFree {
+            resource_name,
+            first_free,
+            second_free,
+        } => {
             assert_eq!(resource_name, "FileHandle");
             assert_eq!(first_free.line, 2);
             assert_eq!(second_free.line, 3);
@@ -238,13 +277,21 @@ fn test_detect_use_after_free() {
 
     let result = analyzer::analyse(&sites, &resources, &AnalysisConfig::default());
 
-    assert_eq!(result.use_after_free_count(), 1, "Should detect exactly one use-after-free");
+    assert_eq!(
+        result.use_after_free_count(),
+        1,
+        "Should detect exactly one use-after-free"
+    );
     assert_eq!(result.leak_count(), 0);
     assert_eq!(result.double_free_count(), 0);
 
     // Verify the violation details.
     match &result.violations[0] {
-        Violation::UseAfterFree { resource_name, free_site, use_site } => {
+        Violation::UseAfterFree {
+            resource_name,
+            free_site,
+            use_site,
+        } => {
             assert_eq!(resource_name, "FileHandle");
             assert_eq!(free_site.line, 3);
             assert_eq!(use_site.line, 5);
@@ -267,7 +314,10 @@ fn test_all_resource_kinds() {
         ("allocation", ResourceKind::Allocation),
         ("gpu-buffer", ResourceKind::GpuBuffer),
         ("db-connection", ResourceKind::DbConnection),
-        ("my-custom-resource", ResourceKind::Custom("my-custom-resource".to_string())),
+        (
+            "my-custom-resource",
+            ResourceKind::Custom("my-custom-resource".to_string()),
+        ),
     ];
 
     for (string_repr, expected_kind) in &test_cases {
@@ -276,10 +326,20 @@ fn test_all_resource_kinds() {
         assert_eq!(&parsed, expected_kind, "Failed to parse '{}'", string_repr);
 
         // as_str should round-trip back to the original string.
-        assert_eq!(parsed.as_str(), *string_repr, "as_str mismatch for '{}'", string_repr);
+        assert_eq!(
+            parsed.as_str(),
+            *string_repr,
+            "as_str mismatch for '{}'",
+            string_repr
+        );
 
         // Display should produce the same string.
-        assert_eq!(format!("{}", parsed), *string_repr, "Display mismatch for '{}'", string_repr);
+        assert_eq!(
+            format!("{}", parsed),
+            *string_repr,
+            "Display mismatch for '{}'",
+            string_repr
+        );
     }
 
     // Verify ResourceEntry.resource_kind() works.
@@ -317,7 +377,10 @@ fn test_clean_analysis() {
     let sites = parser::parse_source(source, "test.rs", &resources);
     let result = analyzer::analyse(&sites, &resources, &AnalysisConfig::default());
 
-    assert!(result.is_clean(), "Properly paired alloc/dealloc should produce no violations");
+    assert!(
+        result.is_clean(),
+        "Properly paired alloc/dealloc should produce no violations"
+    );
     assert_eq!(result.allocation_count, 1);
     assert_eq!(result.deallocation_count, 1);
 }
@@ -386,8 +449,8 @@ fn test_example_full_pipeline() {
     let m = ephapaxiser::manifest::load_manifest(manifest_path)
         .expect("Failed to load example manifest");
 
-    let result = ephapaxiser::codegen::analyse_manifest(&m, base_dir)
-        .expect("analyse_manifest failed");
+    let result =
+        ephapaxiser::codegen::analyse_manifest(&m, base_dir).expect("analyse_manifest failed");
 
     // The example has intentional bugs. With Phase 1's flat (scope-unaware) analysis:
     // - leaky_file_usage's "fd" leak is masked by double_close's re-allocation of "fd"
@@ -395,6 +458,10 @@ fn test_example_full_pipeline() {
     // - double_close's second close(fd) IS detected as a double-free
     // Phase 2 (scope-aware CFG analysis) will catch ALL leaks including masked ones.
     assert!(!result.is_clean(), "Example should have violations");
-    assert_eq!(result.leak_count(), 1, "Phase 1 detects 1 leak (conn; fd leak masked by reuse)");
+    assert_eq!(
+        result.leak_count(),
+        1,
+        "Phase 1 detects 1 leak (conn; fd leak masked by reuse)"
+    );
     assert_eq!(result.double_free_count(), 1, "Example has 1 double-free");
 }

@@ -204,7 +204,12 @@ mod tests {
 
     #[test]
     fn test_generate_custom_kind() {
-        let resources = vec![res("GpuTensor", "alloc_tensor", "free_tensor", "gpu-buffer")];
+        let resources = vec![res(
+            "GpuTensor",
+            "alloc_tensor",
+            "free_tensor",
+            "gpu-buffer",
+        )];
         let output = generate_wrappers(&resources, "gpu-project");
         assert!(output.contains("pub struct LinearGpuTensor<T>"));
         assert!(output.contains("gpu-buffer resource"));

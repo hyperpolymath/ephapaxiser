@@ -56,7 +56,11 @@ pub struct CallSite {
 ///
 /// # Returns
 /// A vector of detected call sites, in order of appearance.
-pub fn parse_source(source_content: &str, file_path: &str, resources: &[ResourceEntry]) -> Vec<CallSite> {
+pub fn parse_source(
+    source_content: &str,
+    file_path: &str,
+    resources: &[ResourceEntry],
+) -> Vec<CallSite> {
     let mut sites = Vec::new();
 
     for (line_idx, line) in source_content.lines().enumerate() {
@@ -116,8 +120,9 @@ fn find_function_call(line: &str, function_name: &str) -> Option<usize> {
     while let Some(pos) = line[search_from..].find(&pattern) {
         let absolute_pos = search_from + pos;
         // Check word boundary: character before must not be alphanumeric or underscore.
-        if absolute_pos == 0 || !line.as_bytes()[absolute_pos - 1].is_ascii_alphanumeric()
-            && line.as_bytes()[absolute_pos - 1] != b'_'
+        if absolute_pos == 0
+            || !line.as_bytes()[absolute_pos - 1].is_ascii_alphanumeric()
+                && line.as_bytes()[absolute_pos - 1] != b'_'
         {
             return Some(absolute_pos);
         }
@@ -146,7 +151,9 @@ fn extract_binding(line: &str, allocator: &str) -> Option<String> {
             after_let
         };
         // Extract identifier before '=' or ':'.
-        let name_end = after_mut.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(after_mut.len());
+        let name_end = after_mut
+            .find(|c: char| !c.is_alphanumeric() && c != '_')
+            .unwrap_or(after_mut.len());
         if name_end > 0 {
             let name = &after_mut[..name_end];
             // Verify the allocator appears after the binding.
@@ -167,7 +174,8 @@ fn extract_binding(line: &str, allocator: &str) -> Option<String> {
         {
             let before_eq = trimmed[..eq_pos].trim();
             // Extract the last identifier token.
-            let name_start = before_eq.rfind(|c: char| !c.is_alphanumeric() && c != '_')
+            let name_start = before_eq
+                .rfind(|c: char| !c.is_alphanumeric() && c != '_')
                 .map(|p| p + 1)
                 .unwrap_or(0);
             let name = &before_eq[name_start..];
@@ -197,7 +205,8 @@ fn extract_dealloc_target(line: &str, deallocator: &str) -> Option<String> {
     let method_pattern = format!(".{}(", deallocator);
     if let Some(dot_pos) = trimmed.find(&method_pattern) {
         let before_dot = &trimmed[..dot_pos];
-        let name_start = before_dot.rfind(|c: char| !c.is_alphanumeric() && c != '_')
+        let name_start = before_dot
+            .rfind(|c: char| !c.is_alphanumeric() && c != '_')
             .map(|p| p + 1)
             .unwrap_or(0);
         let name = &before_dot[name_start..];
@@ -211,7 +220,9 @@ fn extract_dealloc_target(line: &str, deallocator: &str) -> Option<String> {
     if let Some(call_pos) = trimmed.find(&call_pattern) {
         let after_paren = &trimmed[call_pos + call_pattern.len()..];
         // Extract first argument.
-        let arg_end = after_paren.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(after_paren.len());
+        let arg_end = after_paren
+            .find(|c: char| !c.is_alphanumeric() && c != '_')
+            .unwrap_or(after_paren.len());
         if arg_end > 0 {
             let arg = &after_paren[..arg_end];
             return Some(arg.to_string());
@@ -280,6 +291,9 @@ mod tests {
         let source = "let x = reopen(\"test.txt\");\n";
         let resources = vec![test_resource("FD", "open", "close")];
         let sites = parse_source(source, "test.rs", &resources);
-        assert!(sites.is_empty(), "should not match 'reopen' for allocator 'open'");
+        assert!(
+            sites.is_empty(),
+            "should not match 'reopen' for allocator 'open'"
+        );
     }
 }

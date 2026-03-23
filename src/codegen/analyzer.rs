@@ -16,7 +16,9 @@
 
 use std::collections::HashMap;
 
-use crate::abi::{AnalysisResult, LinearResource, OwnershipState, ResourceKind, SourceLocation, Violation};
+use crate::abi::{
+    AnalysisResult, LinearResource, OwnershipState, ResourceKind, SourceLocation, Violation,
+};
 use crate::codegen::parser::{CallSite, CallSiteKind};
 use crate::manifest::{AnalysisConfig, ResourceEntry};
 
@@ -89,58 +91,58 @@ pub fn analyse(
             CallSiteKind::Deallocation => {
                 result.deallocation_count += 1;
 
-                if let Some(ref binding) = site.binding {
-                    if let Some(var) = tracked.get_mut(binding) {
-                        match var.state {
-                            OwnershipState::Owned | OwnershipState::Borrowed => {
-                                // Valid deallocation — transition to Consumed.
-                                var.state = OwnershipState::Consumed;
-                                var.deallocation_site = Some(site.location.clone());
+                if let Some(ref binding) = site.binding
+                    && let Some(var) = tracked.get_mut(binding)
+                {
+                    match var.state {
+                        OwnershipState::Owned | OwnershipState::Borrowed => {
+                            // Valid deallocation — transition to Consumed.
+                            var.state = OwnershipState::Consumed;
+                            var.deallocation_site = Some(site.location.clone());
+                        }
+                        OwnershipState::Consumed => {
+                            // Double-free: already deallocated.
+                            if config.detect_double_free {
+                                result.violations.push(Violation::DoubleFree {
+                                    resource_name: var.resource_name.clone(),
+                                    first_free: var
+                                        .deallocation_site
+                                        .clone()
+                                        .unwrap_or_else(|| site.location.clone()),
+                                    second_free: site.location.clone(),
+                                });
                             }
-                            OwnershipState::Consumed => {
-                                // Double-free: already deallocated.
-                                if config.detect_double_free {
-                                    result.violations.push(Violation::DoubleFree {
-                                        resource_name: var.resource_name.clone(),
-                                        first_free: var
-                                            .deallocation_site
-                                            .clone()
-                                            .unwrap_or_else(|| site.location.clone()),
-                                        second_free: site.location.clone(),
-                                    });
-                                }
-                            }
-                            OwnershipState::Uninitialized => {
-                                // Deallocating an uninitialized resource — treat as use-after-free
-                                // (the resource was never properly allocated under this binding).
-                                if config.detect_use_after_free {
-                                    result.violations.push(Violation::UseAfterFree {
-                                        resource_name: var.resource_name.clone(),
-                                        free_site: site.location.clone(),
-                                        use_site: site.location.clone(),
-                                    });
-                                }
+                        }
+                        OwnershipState::Uninitialized => {
+                            // Deallocating an uninitialized resource — treat as use-after-free
+                            // (the resource was never properly allocated under this binding).
+                            if config.detect_use_after_free {
+                                result.violations.push(Violation::UseAfterFree {
+                                    resource_name: var.resource_name.clone(),
+                                    free_site: site.location.clone(),
+                                    use_site: site.location.clone(),
+                                });
                             }
                         }
                     }
-                    // If binding not tracked, it may be an external resource — skip for now.
                 }
+                // If binding not tracked, it may be an external resource — skip for now.
             }
             CallSiteKind::Usage => {
                 // Check for use-after-free.
-                if let Some(ref binding) = site.binding {
-                    if let Some(var) = tracked.get(binding) {
-                        if var.state == OwnershipState::Consumed && config.detect_use_after_free {
-                            result.violations.push(Violation::UseAfterFree {
-                                resource_name: var.resource_name.clone(),
-                                free_site: var
-                                    .deallocation_site
-                                    .clone()
-                                    .unwrap_or_else(|| site.location.clone()),
-                                use_site: site.location.clone(),
-                            });
-                        }
-                    }
+                if let Some(ref binding) = site.binding
+                    && let Some(var) = tracked.get(binding)
+                    && var.state == OwnershipState::Consumed
+                    && config.detect_use_after_free
+                {
+                    result.violations.push(Violation::UseAfterFree {
+                        resource_name: var.resource_name.clone(),
+                        free_site: var
+                            .deallocation_site
+                            .clone()
+                            .unwrap_or_else(|| site.location.clone()),
+                        use_site: site.location.clone(),
+                    });
                 }
             }
         }
@@ -190,7 +192,11 @@ mod tests {
 
     /// Helper to create a source location.
     fn loc(file: &str, line: usize) -> SourceLocation {
-        SourceLocation { file: file.to_string(), line, column: 0 }
+        SourceLocation {
+            file: file.to_string(),
+            line,
+            column: 0,
+        }
     }
 
     #[test]
@@ -211,7 +217,10 @@ mod tests {
             },
         ];
         let result = analyse(&sites, &resources, &AnalysisConfig::default());
-        assert!(result.is_clean(), "Clean alloc/dealloc should produce no violations");
+        assert!(
+            result.is_clean(),
+            "Clean alloc/dealloc should produce no violations"
+        );
         assert_eq!(result.allocation_count, 1);
         assert_eq!(result.deallocation_count, 1);
     }
@@ -299,6 +308,9 @@ mod tests {
             ..Default::default()
         };
         let result = analyse(&sites, &resources, &config);
-        assert!(result.is_clean(), "Leak detection disabled — should find no violations");
+        assert!(
+            result.is_clean(),
+            "Leak detection disabled — should find no violations"
+        );
     }
 }
