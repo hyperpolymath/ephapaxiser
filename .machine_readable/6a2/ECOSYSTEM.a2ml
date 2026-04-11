@@ -1,47 +1,23 @@
-;; SPDX-License-Identifier: PMPL-1.0-or-later
-;; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-;; ECOSYSTEM.a2ml — Ecosystem position for ephapaxiser
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# ECOSYSTEM.a2ml — Ephapaxiser ecosystem position
+[metadata]
+version = "0.1.0"
+last-updated = "2026-04-11"
 
-(ecosystem
-  (version "0.1.0")
-  (name "ephapaxiser")
-  (type "tool")
-  (purpose "Enforce single-use linear type semantics on resources via Ephapax.
+[project]
+name = "Ephapaxiser"
+purpose = "Enforce single-use linear type semantics on resources via Ephapax.
     Analyses code for resource handles (file descriptors, database connections,
     GPU buffers, crypto keys, session tokens), inserts Ephapax linear type
-    wrappers, and enforces exactly-once usage at compile time.")
+    wrappers, and enforces exactly-once usage at compile time."
+role = "tool"
 
-  (position-in-ecosystem
-    (family "-iser acceleration frameworks")
-    (meta-framework "iseriser")
-    (relationship "sibling")
-    (speciality "Resource safety — linear types for existing code")
-    (top-3 ("typedqliser" "chapeliser" "verisimiser")))
+[position-in-ecosystem]
+category = ""
 
-  (related-projects
-    (project "iseriser"
-      (relationship "meta-framework")
-      (description "Generates new -iser project scaffolding"))
-    (project "typedqliser"
-      (relationship "sibling-priority-1")
-      (description "Formal type safety for any query language"))
-    (project "chapeliser"
-      (relationship "sibling-priority-2")
-      (description "Chapel distributed computing acceleration"))
-    (project "verisimiser"
-      (relationship "sibling-priority-3")
-      (description "VeriSimDB octad database augmentation"))
-    (project "squeakwell"
-      (relationship "sibling")
-      (description "Database recovery via constraint propagation"))
-    (project "proven"
-      (relationship "dependency")
-      (description "Shared Idris2 verified library — provides base proofs"))
-    (project "typell"
-      (relationship "dependency")
-      (description "Type theory engine"))
-    (project "ephapax"
-      (relationship "upstream-language")
-      (description "The linear type language that ephapaxiser wraps.
-        Ephapax (once for all) is hyperpolymath's linear type system
-        where every value must be used exactly once."))))
+[related-projects]
+projects = [
+  # No related projects recorded
+]
