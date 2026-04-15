@@ -2,6 +2,8 @@
 # ephapaxiser — Enforce single-use linear type semantics via Ephapax
 
 # Default: build and test
+import? "contractile.just"
+
 default: build test
 
 # Build release binary
