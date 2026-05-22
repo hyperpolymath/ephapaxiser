@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 # TOPOLOGY — ephapaxiser
 
@@ -13,7 +13,7 @@ ephapaxiser/
 ├── Justfile                        # Task runner recipes
 ├── Containerfile                   # OCI container build (Chainguard base)
 ├── contractile.just                # Contractile CLI recipes
-├── LICENSE                         # PMPL-1.0-or-later
+├── LICENSE                         # MPL-2.0
 ├── README.adoc                     # Project overview
 ├── ROADMAP.adoc                    # Phase plan (0-6)
 ├── TOPOLOGY.md                     # THIS FILE
