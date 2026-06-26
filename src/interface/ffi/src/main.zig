@@ -160,6 +160,22 @@ export fn ephapaxiser_analyse_file(handle: ?*Handle, path_ptr: u64) u32 {
     return 0;
 }
 
+/// Analyse the loaded source for resource handles; returns the count detected.
+/// (ABI: Ephapaxiser.ABI.Types Foreign.prim__analyse — `Bits64 -> Bits32`.)
+export fn ephapaxiser_analyse(handle: ?*Handle) u32 {
+    const h = handle orelse {
+        setError("Null handle");
+        return 0;
+    };
+    if (!h.initialized) {
+        setError("Handle not initialized");
+        return 0;
+    }
+    // Stub: real implementation will analyse the loaded source for handles.
+    clearError();
+    return 0;
+}
+
 /// Detect paired acquire/release operations in analysed code.
 /// Returns the number of detected pairs.
 export fn ephapaxiser_detect_pairs(handle: ?*Handle) u32 {
