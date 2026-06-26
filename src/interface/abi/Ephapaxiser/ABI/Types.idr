@@ -17,6 +17,7 @@ module Ephapaxiser.ABI.Types
 import Data.Bits
 import Data.So
 import Data.Vect
+import Decidable.Equality
 
 %default total
 
@@ -28,14 +29,12 @@ import Data.Vect
 public export
 data Platform = Linux | Windows | MacOS | BSD | WASM
 
-||| Compile-time platform detection
-||| This will be set during compilation based on target
+||| The platform this build targets. Defaults to Linux; the Rust/Zig build
+||| layer overrides this via the codegen target selection. (Previously a
+||| `%runElab` stub that required ElabReflection and did not compile.)
 public export
 thisPlatform : Platform
-thisPlatform =
-  %runElab do
-    -- Platform detection logic
-    pure Linux  -- Default, override with compiler flags
+thisPlatform = Linux
 
 --------------------------------------------------------------------------------
 -- Result Codes
@@ -85,7 +84,62 @@ DecEq Result where
   decEq AlreadyConsumed AlreadyConsumed = Yes Refl
   decEq ResourceLeaked ResourceLeaked = Yes Refl
   decEq DoubleFree DoubleFree = Yes Refl
-  decEq _ _ = No absurd
+  decEq Ok Error = No (\case Refl impossible)
+  decEq Ok InvalidParam = No (\case Refl impossible)
+  decEq Ok OutOfMemory = No (\case Refl impossible)
+  decEq Ok NullPointer = No (\case Refl impossible)
+  decEq Ok AlreadyConsumed = No (\case Refl impossible)
+  decEq Ok ResourceLeaked = No (\case Refl impossible)
+  decEq Ok DoubleFree = No (\case Refl impossible)
+  decEq Error Ok = No (\case Refl impossible)
+  decEq Error InvalidParam = No (\case Refl impossible)
+  decEq Error OutOfMemory = No (\case Refl impossible)
+  decEq Error NullPointer = No (\case Refl impossible)
+  decEq Error AlreadyConsumed = No (\case Refl impossible)
+  decEq Error ResourceLeaked = No (\case Refl impossible)
+  decEq Error DoubleFree = No (\case Refl impossible)
+  decEq InvalidParam Ok = No (\case Refl impossible)
+  decEq InvalidParam Error = No (\case Refl impossible)
+  decEq InvalidParam OutOfMemory = No (\case Refl impossible)
+  decEq InvalidParam NullPointer = No (\case Refl impossible)
+  decEq InvalidParam AlreadyConsumed = No (\case Refl impossible)
+  decEq InvalidParam ResourceLeaked = No (\case Refl impossible)
+  decEq InvalidParam DoubleFree = No (\case Refl impossible)
+  decEq OutOfMemory Ok = No (\case Refl impossible)
+  decEq OutOfMemory Error = No (\case Refl impossible)
+  decEq OutOfMemory InvalidParam = No (\case Refl impossible)
+  decEq OutOfMemory NullPointer = No (\case Refl impossible)
+  decEq OutOfMemory AlreadyConsumed = No (\case Refl impossible)
+  decEq OutOfMemory ResourceLeaked = No (\case Refl impossible)
+  decEq OutOfMemory DoubleFree = No (\case Refl impossible)
+  decEq NullPointer Ok = No (\case Refl impossible)
+  decEq NullPointer Error = No (\case Refl impossible)
+  decEq NullPointer InvalidParam = No (\case Refl impossible)
+  decEq NullPointer OutOfMemory = No (\case Refl impossible)
+  decEq NullPointer AlreadyConsumed = No (\case Refl impossible)
+  decEq NullPointer ResourceLeaked = No (\case Refl impossible)
+  decEq NullPointer DoubleFree = No (\case Refl impossible)
+  decEq AlreadyConsumed Ok = No (\case Refl impossible)
+  decEq AlreadyConsumed Error = No (\case Refl impossible)
+  decEq AlreadyConsumed InvalidParam = No (\case Refl impossible)
+  decEq AlreadyConsumed OutOfMemory = No (\case Refl impossible)
+  decEq AlreadyConsumed NullPointer = No (\case Refl impossible)
+  decEq AlreadyConsumed ResourceLeaked = No (\case Refl impossible)
+  decEq AlreadyConsumed DoubleFree = No (\case Refl impossible)
+  decEq ResourceLeaked Ok = No (\case Refl impossible)
+  decEq ResourceLeaked Error = No (\case Refl impossible)
+  decEq ResourceLeaked InvalidParam = No (\case Refl impossible)
+  decEq ResourceLeaked OutOfMemory = No (\case Refl impossible)
+  decEq ResourceLeaked NullPointer = No (\case Refl impossible)
+  decEq ResourceLeaked AlreadyConsumed = No (\case Refl impossible)
+  decEq ResourceLeaked DoubleFree = No (\case Refl impossible)
+  decEq DoubleFree Ok = No (\case Refl impossible)
+  decEq DoubleFree Error = No (\case Refl impossible)
+  decEq DoubleFree InvalidParam = No (\case Refl impossible)
+  decEq DoubleFree OutOfMemory = No (\case Refl impossible)
+  decEq DoubleFree NullPointer = No (\case Refl impossible)
+  decEq DoubleFree AlreadyConsumed = No (\case Refl impossible)
+  decEq DoubleFree ResourceLeaked = No (\case Refl impossible)
 
 --------------------------------------------------------------------------------
 -- Opaque Handles
@@ -101,8 +155,10 @@ data Handle : Type where
 ||| Returns Nothing if pointer is null
 public export
 createHandle : Bits64 -> Maybe Handle
-createHandle 0 = Nothing
-createHandle ptr = Just (MkHandle ptr)
+createHandle ptr =
+  case choose (ptr /= 0) of
+    Left ok => Just (MkHandle ptr {nonNull = ok})
+    Right _ => Nothing
 
 ||| Extract pointer value from handle
 public export
@@ -135,7 +191,12 @@ DecEq UsageCount where
   decEq Unused Unused = Yes Refl
   decEq UsedOnce UsedOnce = Yes Refl
   decEq UsedMultiple UsedMultiple = Yes Refl
-  decEq _ _ = No absurd
+  decEq Unused UsedOnce = No (\case Refl impossible)
+  decEq Unused UsedMultiple = No (\case Refl impossible)
+  decEq UsedOnce Unused = No (\case Refl impossible)
+  decEq UsedOnce UsedMultiple = No (\case Refl impossible)
+  decEq UsedMultiple Unused = No (\case Refl impossible)
+  decEq UsedMultiple UsedOnce = No (\case Refl impossible)
 
 --------------------------------------------------------------------------------
 -- Resource Lifecycle
@@ -181,10 +242,15 @@ noSkipToConsumed _ impossible
 ||| The type indices enforce that the resource is in a valid state.
 public export
 data LinearResource : ResourceLifecycle -> UsageCount -> Type where
-  ||| Create a new linear resource (freshly acquired, unused)
+  ||| A linear resource carrying its handle. The lifecycle/usage indices are
+  ||| phantom type-level state; the only way to *advance* them is through the
+  ||| `useResource`/`consumeResource` functions, whose signatures encode the
+  ||| legal state-machine transitions. (Previously the constructor fixed the
+  ||| result to `Acquired Unused`, which made `useResource` — required to
+  ||| return `LinearResource InUse UsedOnce` — impossible to write.)
   MkLinearResource :
     (handle : Handle) ->
-    LinearResource Acquired Unused
+    LinearResource lifecycle usage
 
 ||| Proof that a resource was properly consumed: it was used exactly once
 ||| and transitioned through the full lifecycle.
@@ -202,7 +268,7 @@ public export
 useResource :
   LinearResource Acquired Unused ->
   (LinearResource InUse UsedOnce, ValidTransition Acquired InUse)
-useResource (MkLinearResource h) = (?usedResource, AcquiredToInUse)
+useResource (MkLinearResource h) = (MkLinearResource h, AcquiredToInUse)
 
 ||| Consume a linear resource (transition InUse -> Consumed)
 ||| Returns a ConsumeProof as evidence of correct disposal.
@@ -269,10 +335,13 @@ ptrSize MacOS = 64
 ptrSize BSD = 64
 ptrSize WASM = 32
 
-||| Pointer type for platform
+||| Pointer width in bytes for a platform (8 on 64-bit, 4 on WASM).
+||| (Previously `CPtr : Platform -> Type -> Type` defined as `Bits (ptrSize p)`,
+||| which did not typecheck: `Bits` is the bit-operations interface, not a
+||| `Nat -> Type` constructor.)
 public export
-CPtr : Platform -> Type -> Type
-CPtr p _ = Bits (ptrSize p)
+cPtrBytes : Platform -> Nat
+cPtrBytes p = ptrSize p `div` 8
 
 --------------------------------------------------------------------------------
 -- Memory Layout Proofs
@@ -288,25 +357,38 @@ public export
 data HasAlignment : Type -> Nat -> Type where
   AlignProof : {0 t : Type} -> {n : Nat} -> HasAlignment t n
 
-||| Size of C types (platform-specific)
+||| A first-order tag for the C scalar types whose size/alignment the ABI
+||| reasons about. We dispatch over this tag rather than over `Type` itself:
+||| Idris2 cannot pattern-match on type-level function applications such as
+||| `CInt p` (the cause of the original `Can't match on CInt ?_` error).
 public export
-cSizeOf : (p : Platform) -> (t : Type) -> Nat
-cSizeOf p (CInt _) = 4
-cSizeOf p (CSize _) = if ptrSize p == 64 then 8 else 4
-cSizeOf p Bits32 = 4
-cSizeOf p Bits64 = 8
-cSizeOf p Double = 8
-cSizeOf p _ = ptrSize p `div` 8
+data CType : Type where
+  TInt : CType
+  TSize : CType
+  TBits32 : CType
+  TBits64 : CType
+  TDouble : CType
+  TPointer : CType
 
-||| Alignment of C types (platform-specific)
+||| Size of C types (platform-specific), keyed by the `CType` tag.
 public export
-cAlignOf : (p : Platform) -> (t : Type) -> Nat
-cAlignOf p (CInt _) = 4
-cAlignOf p (CSize _) = if ptrSize p == 64 then 8 else 4
-cAlignOf p Bits32 = 4
-cAlignOf p Bits64 = 8
-cAlignOf p Double = 8
-cAlignOf p _ = ptrSize p `div` 8
+cSizeOf : (p : Platform) -> (t : CType) -> Nat
+cSizeOf p TInt = 4
+cSizeOf p TSize = if ptrSize p == 64 then 8 else 4
+cSizeOf p TBits32 = 4
+cSizeOf p TBits64 = 8
+cSizeOf p TDouble = 8
+cSizeOf p TPointer = cPtrBytes p
+
+||| Alignment of C types (platform-specific), keyed by the `CType` tag.
+public export
+cAlignOf : (p : Platform) -> (t : CType) -> Nat
+cAlignOf p TInt = 4
+cAlignOf p TSize = if ptrSize p == 64 then 8 else 4
+cAlignOf p TBits32 = 4
+cAlignOf p TBits64 = 8
+cAlignOf p TDouble = 8
+cAlignOf p TPointer = cPtrBytes p
 
 --------------------------------------------------------------------------------
 -- Resource Tracking Struct
