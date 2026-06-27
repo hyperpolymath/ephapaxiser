@@ -9,3 +9,4 @@ modules = Ephapaxiser.ABI.Types
         , Ephapaxiser.ABI.Layout
         , Ephapaxiser.ABI.Foreign
         , Ephapaxiser.ABI.Proofs
+        , Ephapaxiser.ABI.Semantics
