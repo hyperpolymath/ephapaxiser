@@ -10,3 +10,4 @@ modules = Ephapaxiser.ABI.Types
         , Ephapaxiser.ABI.Foreign
         , Ephapaxiser.ABI.Proofs
         , Ephapaxiser.ABI.Semantics
+        , Ephapaxiser.ABI.Invariants
