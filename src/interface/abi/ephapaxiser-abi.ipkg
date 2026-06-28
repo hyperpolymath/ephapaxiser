@@ -12,3 +12,4 @@ modules = Ephapaxiser.ABI.Types
         , Ephapaxiser.ABI.Semantics
         , Ephapaxiser.ABI.Invariants
         , Ephapaxiser.ABI.FfiSeam
+        , Ephapaxiser.ABI.Capstone
