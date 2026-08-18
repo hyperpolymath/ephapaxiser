@@ -9,7 +9,3 @@ modules = Ephapaxiser.ABI.Types
         , Ephapaxiser.ABI.Layout
         , Ephapaxiser.ABI.Foreign
         , Ephapaxiser.ABI.Proofs
-        , Ephapaxiser.ABI.Semantics
-        , Ephapaxiser.ABI.Invariants
-        , Ephapaxiser.ABI.FfiSeam
-        , Ephapaxiser.ABI.Capstone
