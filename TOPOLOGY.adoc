@@ -1,12 +1,10 @@
-<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
-<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
-# TOPOLOGY — ephapaxiser
+== TOPOLOGY — ephapaxiser
 
 Repository structure and module relationships for ephapaxiser.
 
-## Directory Map
+=== Directory Map
 
-```
+....
 ephapaxiser/
 ├── 0-AI-MANIFEST.a2ml              # AI agent entry point (read first)
 ├── Cargo.toml                      # Rust package definition
@@ -97,11 +95,11 @@ ephapaxiser/
 ├── .hypatia/                       # Hypatia scanner rules
 ├── .claude/                        # Claude Code project instructions
 └── .well-known/                    # Well-known URIs
-```
+....
 
-## Data Flow
+=== Data Flow
 
-```
+....
                   ephapaxiser.toml
                        │
               ┌────────▼────────┐
@@ -138,18 +136,22 @@ ephapaxiser/
                        ▼
               wrapped source code
               (compile-time safe)
-```
+....
 
-## Key Invariants
+=== Key Invariants
 
-1. **Idris2 wins**: When Idris2 proofs conflict with Ephapax linear types,
-   the proofs are authoritative. Adjust wrappers, never proofs.
-2. **Single-use**: Every wrapped resource must be consumed exactly once.
-   This is enforced structurally, not by convention.
-3. **Zero runtime overhead**: All linearity proofs are erased at compile time.
-4. **Machine-readable in `.machine_readable/` only**: No state files in root.
+[arabic]
+. *Idris2 wins*: When Idris2 proofs conflict with Ephapax linear types,
+the proofs are authoritative. Adjust wrappers, never proofs.
+. *Single-use*: Every wrapped resource must be consumed exactly once.
+This is enforced structurally, not by convention.
+. *Zero runtime overhead*: All linearity proofs are erased at compile
+time.
+. *Machine-readable in `+.machine_readable/+` only*: No state files in
+root.
 
-## Ecosystem Position
+=== Ecosystem Position
 
-Part of the [hyperpolymath -iser family](https://github.com/hyperpolymath/iseriser).
-Siblings include typedqliser, chapeliser, verisimiser, and 26+ others.
+Part of the https://github.com/hyperpolymath/iseriser[hyperpolymath
+-iser family]. Siblings include typedqliser, chapeliser, verisimiser,
+and 26+ others.
